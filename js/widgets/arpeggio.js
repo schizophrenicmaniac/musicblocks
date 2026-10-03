@@ -389,6 +389,8 @@ class Arpeggio {
                 widgetWindow.getWidgetBody().style.left = "0px";
                 widgetWindow.getWidgetBody().style.height = "400px";
                 widgetWindow.getWidgetBody().style.width = "400px";
+                outerDiv.style.height = widgetWindow.getWidgetBody().style.height;
+                outerDiv.style.width = widgetWindow.getWidgetBody().style.width;
                 // const innerDiv = docById("arpeggioInnerDiv");
                 innerDiv.style.height = widgetWindow.getWidgetBody().style.height;
                 innerDiv.style.width = widgetWindow.getWidgetBody().style.width;

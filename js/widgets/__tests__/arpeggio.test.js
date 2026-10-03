@@ -232,6 +232,24 @@ describe("Arpeggio Widget", () => {
 
             expect(mockWidgetBody.style.position).toBe("relative");
         });
+
+        test("should reset outer and inner divs to the body size on restore", () => {
+            arpeggio.init(activityMock);
+            const outerDiv = document.getElementById("arpeggioOuterDiv");
+            const innerDiv = document.getElementById("arpeggioInnerDiv");
+
+            mockWidgetWindow._maximized = true;
+            mockWidgetWindow.onmaximize();
+            mockWidgetWindow._maximized = false;
+            mockWidgetWindow.onmaximize();
+
+            expect(mockWidgetBody.style.height).toBe("400px");
+            expect(mockWidgetBody.style.width).toBe("400px");
+            expect(outerDiv.style.height).toBe("400px");
+            expect(outerDiv.style.width).toBe("400px");
+            expect(innerDiv.style.height).toBe("400px");
+            expect(innerDiv.style.width).toBe("400px");
+        });
     });
 
     // --- Interaction Tests ---
