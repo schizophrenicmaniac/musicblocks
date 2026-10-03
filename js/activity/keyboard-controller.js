@@ -295,37 +295,38 @@ class KeyboardController {
                         activity.stageDirty = true;
                     }
             }
-        } else if (
-            event.ctrlKey ||
-            (event.metaKey &&
-                !disableKeys &&
-                (event.keyCode === 90 || event.keyCode === 89 || event.keyCode === V))
-        ) {
-            switch (event.keyCode) {
-                case 90: // 'Z'
-                    event.preventDefault();
-                    if (event.shiftKey) {
+        } else if (event.ctrlKey || event.metaKey) {
+            // Other Ctrl/Cmd combos are left to the browser instead of
+            // falling through to the plain-key shortcuts below.
+            if (!disableKeys) {
+                switch (event.keyCode) {
+                    case 90: // 'Z'
+                        event.preventDefault();
+                        if (event.shiftKey) {
+                            activity.blocks.redoAction();
+                        } else {
+                            activity.blocks.undoAction();
+                        }
+                        break;
+                    case 89: // 'Y'
+                        event.preventDefault();
                         activity.blocks.redoAction();
-                    } else {
-                        activity.blocks.undoAction();
-                    }
-                    break;
-                case 89: // 'Y'
-                    event.preventDefault();
-                    activity.blocks.redoAction();
-                    break;
-                case V:
-                    // activity.textMsg("Ctl-V " + _("Paste"));
-                    activity.pasteBox.createBox(activity.turtleBlocksScale, 200, 200);
-                    activity.pasteBox.show();
-                    pasteEl.style.left =
-                        (activity.pasteBox.getPos()[0] + 10) * activity.turtleBlocksScale + "px";
-                    pasteEl.style.top =
-                        (activity.pasteBox.getPos()[1] + 10) * activity.turtleBlocksScale + "px";
-                    pasteEl.focus();
-                    pasteEl.style.visibility = "visible";
-                    activity.update = true;
-                    break;
+                        break;
+                    case V:
+                        // activity.textMsg("Ctl-V " + _("Paste"));
+                        activity.pasteBox.createBox(activity.turtleBlocksScale, 200, 200);
+                        activity.pasteBox.show();
+                        pasteEl.style.left =
+                            (activity.pasteBox.getPos()[0] + 10) * activity.turtleBlocksScale +
+                            "px";
+                        pasteEl.style.top =
+                            (activity.pasteBox.getPos()[1] + 10) * activity.turtleBlocksScale +
+                            "px";
+                        pasteEl.focus();
+                        pasteEl.style.visibility = "visible";
+                        activity.update = true;
+                        break;
+                }
             }
         } else if (event.shiftKey && !disableKeys) {
             switch (event.keyCode) {

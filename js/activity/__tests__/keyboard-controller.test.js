@@ -567,6 +567,60 @@ describe("KeyboardController", () => {
             expect(event.preventDefault).toHaveBeenCalled();
             expect(activity.blocks.redoAction).toHaveBeenCalled();
         });
+
+        it("does not trigger undo on Ctrl+Z while turtles are running", () => {
+            const activity = makeActivity();
+            activity.blocks.undoAction = jest.fn();
+            activity.turtles.running.mockReturnValue(true);
+            const controller = createController(activity);
+            const event = makeEvent({ keyCode: 90, ctrlKey: true });
+
+            controller.__keyPressed(event);
+
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(activity.blocks.undoAction).not.toHaveBeenCalled();
+        });
+
+        it("does not trigger redo on Ctrl+Y when paste input is active", () => {
+            const activity = makeActivity();
+            activity.blocks.redoAction = jest.fn();
+            activity.paste.style.visibility = "visible";
+            const controller = createController(activity);
+            const event = makeEvent({ keyCode: 89, ctrlKey: true });
+
+            controller.__keyPressed(event);
+
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(activity.blocks.redoAction).not.toHaveBeenCalled();
+        });
+
+        it("does not open the paste box on Ctrl+V while the search widget is open", () => {
+            const activity = makeActivity();
+            activity.searchWidget.style.visibility = "visible";
+            const controller = createController(activity);
+
+            controller.__keyPressed(makeEvent({ keyCode: KEYCODE.V, ctrlKey: true }));
+
+            expect(activity.pasteBox.createBox).not.toHaveBeenCalled();
+            expect(activity.paste.style.visibility).toBe("hidden");
+        });
+
+        it("does not treat other Ctrl/Cmd combos as plain-key shortcuts", () => {
+            const activity = makeActivity();
+            activity.blocks.activeBlock = { id: "block-1" };
+            const controller = createController(activity);
+
+            controller.__keyPressed(makeEvent({ keyCode: KEYCODE.DOWN, ctrlKey: true }));
+            controller.__keyPressed(makeEvent({ keyCode: KEYCODE.DEL, ctrlKey: true }));
+            controller.__keyPressed(makeEvent({ keyCode: KEYCODE.DEL, metaKey: true }));
+            controller.__keyPressed(
+                makeEvent({ keyCode: KEYCODE.SPACE, ctrlKey: true, shiftKey: true })
+            );
+
+            expect(activity.blocks.moveStackRelative).not.toHaveBeenCalled();
+            expect(activity.blocks.extract).not.toHaveBeenCalled();
+            expect(activity.turtles.setStageScale).not.toHaveBeenCalled();
+        });
     });
     it("Cmd+Y triggers redoAction on macOS", () => {
         const activity = makeActivity();
