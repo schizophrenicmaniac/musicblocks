@@ -88,6 +88,15 @@ body.highcontrast #themedropdown.dropdown-content li > a:hover {
     color: var(--color-text-secondary);
 }
 
+/* The close/rollup glyphs default to --color-text-inverse, which is near
+   black in dark mode and disappears on the black title bar buttons. */
+.dark #floatingWindows > .windowFrame > .wfTopBar .wftButton.close::before,
+.dark #floatingWindows > .windowFrame > .wfTopBar .wftButton.close::after,
+.dark #floatingWindows > .windowFrame > .wfTopBar .wftButton.rollup::before,
+.dark #floatingWindows > .windowFrame > .wfTopBar .wftButton.rollup::after {
+    background-color: var(--color-text-primary);
+}
+
 .dark #floatingWindows > .windowFrame > .wfWinBody .wfbWidget {
     color: var(--color-text-secondary) !important;
     background-color: var(--color-bg-secondary) !important;

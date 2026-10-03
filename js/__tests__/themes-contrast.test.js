@@ -15,6 +15,10 @@ const path = require("path");
 const CSS_DIR = path.join(__dirname, "..", "..", "css");
 const tokensCss = fs.readFileSync(path.join(CSS_DIR, "tokens.css"), "utf8");
 const themesCss = fs.readFileSync(path.join(CSS_DIR, "themes.css"), "utf8");
+const windowsCss = fs.readFileSync(
+    path.join(__dirname, "..", "..", "dist", "css", "windows.css"),
+    "utf8"
+);
 
 /**
  * Collects the custom properties declared in one selector block.
@@ -202,6 +206,42 @@ describe("themes.css colour tokens", () => {
 
         expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
     });
+
+    it.each(["dark", "highcontrast"])(
+        "keeps widget title bar button icons visible in the %s theme",
+        theme => {
+            const windowRules = parseRules(windowsCss);
+            const buttonRule = windowRules.find(
+                r => r.selector === "#floatingWindows > .windowFrame > .wfTopBar .wftButton"
+            );
+            expect(buttonRule).toBeDefined();
+
+            const tokens = THEMES[theme];
+            const background = resolveColor(
+                declaration(buttonRule.body, "background-color"),
+                tokens
+            );
+            expect(background).not.toBeNull();
+
+            ["close", "rollup"].forEach(button => {
+                const glyph = `.wftButton.${button}::before`;
+                // A theme override in themes.css wins over the base glyph colour.
+                const glyphRule =
+                    rules.find(r => r.selector.includes(glyph) && themeOf(r.selector) === theme) ||
+                    windowRules.find(r => r.selector.includes(glyph));
+                expect(glyphRule).toBeDefined();
+
+                const foreground = resolveColor(
+                    declaration(glyphRule.body, "background-color"),
+                    tokens
+                );
+                expect(foreground).not.toBeNull();
+
+                // WCAG 2.1 AA non-text contrast for UI components.
+                expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(3);
+            });
+        }
+    );
 
     it("ensures themes.css does not declare or reference deleted legacy properties", () => {
         const legacyNames = ["--bg", "--fg", "--border", "--panel-bg", "--overlay-bg", "--accent"];
