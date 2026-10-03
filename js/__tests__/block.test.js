@@ -510,6 +510,14 @@ describe("Block Foundation", () => {
                 expect(block.highlightBitmap.visible).toBe(true); // default from mock is true
                 expect(block.container.updateCache).not.toHaveBeenCalled();
             });
+
+            it("should do nothing while highlightBitmap is still loading", () => {
+                block.highlightBitmap = null;
+
+                expect(() => block.highlight()).not.toThrow();
+                expect(block.bitmap.visible).toBe(true);
+                expect(block.container.updateCache).not.toHaveBeenCalled();
+            });
         });
 
         describe("unhighlight()", () => {
@@ -528,6 +536,17 @@ describe("Block Foundation", () => {
                 expect(block.highlightBitmap.visible).toBe(false);
                 expect(block.container.updateCache).not.toHaveBeenCalled();
             });
+
+            it("should do nothing while highlightBitmap is still loading", () => {
+                block.disconnectedBitmap = new global.createjs.Bitmap();
+                block.highlightBitmap = null;
+                block.connections = [null, null];
+                block.bitmap.visible = false;
+
+                expect(() => block.unhighlight()).not.toThrow();
+                expect(block.bitmap.visible).toBe(false);
+                expect(block.container.updateCache).not.toHaveBeenCalled();
+            });
         });
 
         describe("unhighlightSelectedBlocks()", () => {
@@ -540,6 +559,15 @@ describe("Block Foundation", () => {
                 expect(mockBlocks.unhighlight).toHaveBeenCalledWith(0, true);
                 expect(block.disconnectedBitmap.visible).toBe(true);
                 expect(block.container.updateCache).not.toHaveBeenCalled();
+            });
+
+            it("should not throw before disconnectedBitmap has loaded", () => {
+                mockBlocks.unhighlight = jest.fn();
+                block.disconnectedBitmap = null;
+
+                expect(() => block.unhighlightSelectedBlocks(0, true)).not.toThrow();
+                expect(mockBlocks.unhighlight).toHaveBeenCalledWith(0, true);
+                expect(block.container.updateCache).toHaveBeenCalled();
             });
         });
 

@@ -644,12 +644,17 @@ class Block {
             return;
         }
 
+        if (this.bitmap === null || this.highlightBitmap === null) {
+            // artwork is still loading, so do nothing.
+            return;
+        }
+
         if (this.disconnectedBitmap !== null) {
             if (!this.bitmap.visible && !this.disconnectedBitmap.visible) {
                 // block is hidden, so do nothing.
                 return;
             }
-        } else if (this.bitmap === null || !this.bitmap.visible) {
+        } else if (!this.bitmap.visible) {
             return;
         }
 
@@ -736,7 +741,9 @@ class Block {
             return;
         }
 
-        if (this.bitmap === null) {
+        // The bitmaps load one after another in generateArtwork(), with
+        // highlightBitmap last, so wait until the whole set is ready.
+        if (this.bitmap === null || this.highlightBitmap === null) {
             // console.debug("bitmap not ready");
             return;
         }
@@ -808,7 +815,7 @@ class Block {
     unhighlightSelectedBlocks(blk, selection) {
         if (selection) {
             this.blocks.unhighlight(blk, true);
-            if (!this.collapsed) {
+            if (!this.collapsed && this.disconnectedBitmap !== null) {
                 this.disconnectedBitmap.visible = true;
             }
             this.updateCache();
