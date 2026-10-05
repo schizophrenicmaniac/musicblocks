@@ -1453,10 +1453,23 @@ describe("modeMapper", () => {
         ["D", "natural minor", ["d", "minor"]],
         ["E", "major", ["e", "major"]],
         ["F♯", "minor", ["f♯", "minor"]],
-        ["C", "phrygian", ["g♯", "major"]],
+        ["C", "phrygian", ["a♭", "major"]],
         ["A♯", "mixolydian", ["c", "minor"]],
-        ["C", "DORIAN", ["a♯", "major"]]
+        ["C", "DORIAN", ["b♭", "major"]]
     ])("should correctly map %s %s to %j", (key, mode, expected) => {
+        expect(modeMapper(key, mode)).toEqual(expected);
+    });
+
+    it.each([
+        ["C", "dorian", ["b♭", "major"]],
+        ["D", "phrygian", ["b♭", "major"]],
+        ["F", "mixolydian", ["b♭", "major"]],
+        ["A", "locrian", ["b♭", "major"]],
+        ["C", "phrygian", ["a♭", "major"]],
+        ["G", "locrian", ["a♭", "major"]],
+        ["C", "locrian", ["d♭", "major"]],
+        ["G♭", "lydian", ["d♭", "major"]]
+    ])("should map flat-key mode %s %s to %j", (key, mode, expected) => {
         expect(modeMapper(key, mode)).toEqual(expected);
     });
 });
@@ -1905,6 +1918,11 @@ describe("getNote", () => {
         expect(result).toEqual(["G♯", 4, 0]);
     });
 
+    it("should spell the second degree of C locrian as D♭", () => {
+        const result = getNote(1, 4, 0, "C locrian");
+        expect(result).toEqual(["D♭", 4, 0]);
+    });
+
     it("should handle negative transposition", () => {
         const result = getNote("D", 4, -2, "C major");
         expect(result[0]).toBe("C");
@@ -2099,7 +2117,8 @@ describe("buildScale", () => {
         { keySignature: "C lydian", expected: ["C", "D", "E", "F♯", "G", "A", "B", "C"] },
         { keySignature: "A dorian", expected: ["A", "B", "C", "D", "E", "F♯", "G", "A"] },
         { keySignature: "B phrygian", expected: ["B", "C", "D", "E", "F♯", "G", "A", "B"] },
-        { keySignature: "D mixolydian", expected: ["D", "E", "F♯", "G", "A", "B", "C", "D"] }
+        { keySignature: "D mixolydian", expected: ["D", "E", "F♯", "G", "A", "B", "C", "D"] },
+        { keySignature: "C locrian", expected: ["C", "D♭", "E♭", "F", "G♭", "A♭", "B♭", "C"] }
     ];
 
     modalCases.forEach(({ keySignature, expected }) => {
@@ -3749,10 +3768,10 @@ describe("ACCIDENTALNAMES", () => {
 describe("modeMapper branch coverage", () => {
     const cases = [
         ["C", "ionian", ["c", "major"]],
-        ["C", "dorian", ["a" + SHARP, "major"]],
+        ["C", "dorian", ["b" + FLAT, "major"]],
         ["F", "dorian", ["c", "minor"]],
         ["D" + FLAT, "dorian", ["e" + FLAT, "minor"]],
-        ["C", "phrygian", ["g" + SHARP, "major"]],
+        ["C", "phrygian", ["a" + FLAT, "major"]],
         ["G", "phrygian", ["c", "minor"]],
         ["D" + FLAT, "phrygian", ["g" + FLAT, "minor"]],
         ["C", "lydian", ["g", "major"]],
@@ -3761,7 +3780,7 @@ describe("modeMapper branch coverage", () => {
         ["C", "mixolydian", ["f", "major"]],
         ["A" + SHARP, "mixolydian", ["c", "minor"]],
         ["B" + FLAT, "mixolydian", ["c", "minor"]],
-        ["C", "locrian", ["b", "major"]],
+        ["C", "locrian", ["d" + FLAT, "major"]],
         ["D", "locrian", ["c", "minor"]],
         ["E" + FLAT, "locrian", ["d" + FLAT, "minor"]],
         ["A", "aeolian", ["a", "minor"]],
