@@ -1029,6 +1029,124 @@ describe("MusicKeyboard widgetWindow.onclose & event cleanup", () => {
         expect(mockActivity.logo.synth.trigger).toHaveBeenCalled();
     });
 
+    describe("editing a row from its label", () => {
+        const { FIXEDSOLFEGE1 } = require("../../utils/musicutils-i18n.js");
+
+        const argBlock = value => ({
+            value,
+            text: { text: "" },
+            container: { children: [], setChildIndex: jest.fn() },
+            updateCache: jest.fn(),
+            blocks: { setPitchOctave: jest.fn() },
+            connections: [44]
+        });
+
+        // A keyboard with one recorded G4 note on the row of pitch block 44.
+        const openMenu = (condition, row, blockList) => {
+            document.body.innerHTML = '<div id="wheelDivptm"></div>';
+            global.FIXEDSOLFEGE1 = FIXEDSOLFEGE1;
+            mockActivity.blocks = { blockList };
+
+            const keyboard = new MusicKeyboard(mockActivity);
+            keyboard.init();
+            keyboard.layout = [{ ...row, blockNumber: 44 }];
+            keyboard.displayLayout = [{ ...row, blockNumber: 44, objId: "whiteRow0" }];
+            keyboard._notesPlayed = [
+                {
+                    startTime: 0,
+                    noteOctave: row.noteName === "hertz" ? row.noteOctave : "G4",
+                    objId: "whiteRow0",
+                    duration: 0.25,
+                    blockNumber: 44
+                },
+                { startTime: 300, noteOctave: "R", objId: null, duration: 0.25 }
+            ];
+            keyboard._sortLayout = jest.fn();
+            keyboard._createTable = jest.fn();
+            keyboard._createColumnPieSubmenu(0, condition);
+            return keyboard;
+        };
+
+        const openPitchMenu = () =>
+            openMenu(
+                "pitchblocks",
+                { noteName: "sol", noteOctave: 4 },
+                {
+                    44: { connections: [null, 45, 46] },
+                    45: argBlock("sol"),
+                    46: { value: 4 }
+                }
+            );
+
+        const choosePitch = (keyboard, note, accidental, octave) => {
+            keyboard._pitchWheel.navItems[0].title = note;
+            keyboard._accidentalsWheel.navItems[0].title = accidental;
+            keyboard._octavesWheel.navItems[0].title = octave;
+            keyboard._pitchWheel.selectedNavItemIndex = 0;
+            keyboard._accidentalsWheel.selectedNavItemIndex = 0;
+            keyboard._octavesWheel.selectedNavItemIndex = 0;
+            keyboard._pitchWheel.navItems[0].navigateFunction();
+        };
+
+        test("keeps the chosen accidental on the solfege block and the row", () => {
+            const keyboard = openPitchMenu();
+
+            choosePitch(keyboard, "la", "♯", "4");
+
+            expect(mockActivity.blocks.blockList[45].value).toBe("la♯");
+            expect(mockActivity.blocks.blockList[45].text.text).toBe("la♯");
+            expect(keyboard.layout[0]).toMatchObject({ noteName: "la♯", noteOctave: 4 });
+        });
+
+        test("moves the notes recorded on the row to the new pitch", () => {
+            const keyboard = openPitchMenu();
+
+            choosePitch(keyboard, "la", "♯", "5");
+
+            expect(keyboard._notesPlayed[0].noteOctave).toBe("A#5");
+            expect(keyboard._notesPlayed[1].noteOctave).toBe("R");
+        });
+
+        test("rebuilds the piano and the grid when the menu closes", () => {
+            const keyboard = openPitchMenu();
+            choosePitch(keyboard, "la", "♯", "4");
+
+            keyboard._exitWheel.navItems[0].navigateFunction();
+
+            expect(keyboard._sortLayout).toHaveBeenCalledTimes(1);
+            expect(keyboard._createTable).toHaveBeenCalledTimes(1);
+        });
+
+        test("leaves the layout alone when the menu closes without a change", () => {
+            const keyboard = openPitchMenu();
+
+            keyboard._exitWheel.navItems[0].navigateFunction();
+
+            expect(keyboard._sortLayout).not.toHaveBeenCalled();
+            expect(keyboard._createTable).not.toHaveBeenCalled();
+        });
+
+        test("moves the notes recorded on a hertz row to the new frequency", () => {
+            const keyboard = openMenu(
+                "synthsblocks",
+                { noteName: "hertz", noteOctave: 392 },
+                {
+                    44: { connections: [null, 45, null] },
+                    45: argBlock(392)
+                }
+            );
+            keyboard._pitchWheel.navItems[0].title = "436";
+            keyboard._pitchWheel.selectedNavItemIndex = 0;
+
+            keyboard._pitchWheel.navItems[0].navigateFunction();
+            keyboard._exitWheel.navItems[0].navigateFunction();
+
+            expect(mockActivity.blocks.blockList[45].value).toBe(436);
+            expect(keyboard._notesPlayed[0].noteOctave).toBe(436);
+            expect(keyboard._sortLayout).toHaveBeenCalledTimes(1);
+        });
+    });
+
     test("synchronizes layout and displayLayout correctly, preserving real block numbers", () => {
         const keyboard = new MusicKeyboard(mockActivity);
         keyboard.noteNames = ["do", "sol"];
@@ -1392,6 +1510,42 @@ describe("MusicKeyboard core logic", () => {
             expect(keyboard.layout).toHaveLength(1);
             expect(keyboard._removePitchBlock).toHaveBeenCalledWith(2);
             expect(keyboard._createTable).toHaveBeenCalled();
+        });
+
+        test("moves notes off a removed duplicate and onto the redrawn keys", () => {
+            const keyboard = new MusicKeyboard({});
+            keyboard.activity = {
+                turtles: { ithTurtle: () => ({ singer: { keySignature: "C major" } }) }
+            };
+            keyboard.keyboardShown = true;
+            keyboard._removePitchBlock = jest.fn();
+            keyboard._syncLayouts = jest.fn(() => {
+                keyboard.displayLayout = keyboard.layout.map(note => ({ ...note }));
+            });
+            keyboard._createKeyboard = jest.fn(() => {
+                keyboard.displayLayout.forEach(note => {
+                    note.objId = "key" + note.blockNumber;
+                });
+            });
+            keyboard.layout = [
+                { noteName: "do", noteOctave: 4, blockNumber: 1 },
+                { noteName: "do", noteOctave: 4, blockNumber: 2 },
+                { noteName: "sol", noteOctave: 4, blockNumber: 3 }
+            ];
+            keyboard._notesPlayed = [
+                { startTime: 0, noteOctave: "C4", objId: "whiteRow5", blockNumber: 2 },
+                { startTime: 100, noteOctave: "G4", objId: "whiteRow0", blockNumber: 3 },
+                { startTime: 200, noteOctave: "R", objId: null }
+            ];
+
+            keyboard._sortLayout();
+
+            expect(keyboard._removePitchBlock).toHaveBeenCalledWith(2);
+            expect(keyboard._notesPlayed.map(note => [note.blockNumber, note.objId])).toEqual([
+                [1, "key1"],
+                [3, "key3"],
+                [undefined, null]
+            ]);
         });
     });
 

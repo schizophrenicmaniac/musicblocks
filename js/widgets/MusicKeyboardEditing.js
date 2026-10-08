@@ -718,8 +718,8 @@ const MusicKeyboardEditing = {
             });
 
             this._notesPlayed.map(item => {
-                if (item.objId === this.remove[1]) {
-                    item.objId = this.remove[0];
+                if (item.blockNumber === this.remove[1]) {
+                    item.blockNumber = this.remove[0];
                 }
 
                 return item;
@@ -733,6 +733,15 @@ const MusicKeyboardEditing = {
 
             if (this.keyboardShown) {
                 this._createKeyboard();
+                // Redrawing renumbers the keys, so point the recorded notes at their new ones.
+                for (const item of this._notesPlayed) {
+                    const key = this.displayLayout.find(
+                        note => note.blockNumber === item.blockNumber
+                    );
+                    if (key) {
+                        item.objId = key.objId;
+                    }
+                }
             } else {
                 this._createTable();
             }
@@ -1062,6 +1071,8 @@ const MusicKeyboardEditing = {
                 this._pitchWheel.navigateWheel(noteLabels.indexOf(noteValue));
             }
 
+            let pitchChanged = false;
+
             this._exitWheel.navItems[0].navigateFunction = () => {
                 docById("wheelDivptm").style.display = "none";
                 this._pitchWheel.removeWheel();
@@ -1069,6 +1080,12 @@ const MusicKeyboardEditing = {
                 if (condition === "pitchblocks") {
                     this._accidentalsWheel.removeWheel();
                     this._octavesWheel.removeWheel();
+                }
+
+                // The row may now belong somewhere else, so rebuild the piano and the grid.
+                if (pitchChanged) {
+                    this._sortLayout();
+                    this._createTable();
                 }
             };
 
@@ -1097,11 +1114,12 @@ const MusicKeyboardEditing = {
                 cell.textContent =
                     displayLayout[index].noteName + displayLayout[index].noteOctave.toString();
                 this._notesPlayed.map(item => {
-                    if (item.objId === displayLayout[index].blockNumber) {
+                    if (item.blockNumber === displayLayout[index].blockNumber) {
                         item.noteOctave = parseInt(blockValue, 10);
                     }
                     return item;
                 });
+                pitchChanged = true;
             };
 
             if (condition === "synthsblocks") {
@@ -1125,6 +1143,7 @@ const MusicKeyboardEditing = {
                             .title;
                     if (attr !== "♮") {
                         label += attr;
+                        labelValue += attr;
                     }
                 } else {
                     i = noteLabels.indexOf(label);
@@ -1158,20 +1177,21 @@ const MusicKeyboardEditing = {
                 displayLayout[index].noteName = label;
                 displayLayout[index].noteOctave = octave;
                 if (this.layout[index]) {
-                    this.layout[index].noteName = label;
+                    this.layout[index].noteName = labelValue;
                     this.layout[index].noteOctave = octave;
                 }
                 cell.textContent =
                     displayLayout[index].noteName + displayLayout[index].noteOctave.toString();
-                const temp1 = label;
+                const temp1 = labelValue;
                 const temp2 = resolveSynthNoteName(temp1, octave);
 
                 this._notesPlayed.map(item => {
-                    if (item.objId === displayLayout[index].blockNumber) {
+                    if (item.blockNumber === displayLayout[index].blockNumber) {
                         item.noteOctave = temp2;
                     }
                     return item;
                 });
+                pitchChanged = true;
             };
 
             /**
