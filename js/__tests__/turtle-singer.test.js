@@ -2418,3 +2418,98 @@ describe("processNote — custom timbre effects normalization (#9043)", () => {
         expect(paramsEffects.delayTime).toBe(3.5);
     });
 });
+
+describe("processNote — settimbre inside setdrum parent walk (#9383)", () => {
+    let turtleMock;
+    let activityMock;
+    let singer;
+    const blk = "noteBlk";
+
+    beforeEach(() => {
+        turtleMock = createTurtleMock();
+        turtleMock.doWait = jest.fn();
+        turtleMock.blink = jest.fn();
+        turtleMock.singer = new Singer(turtleMock);
+        activityMock = createActivityMock(turtleMock);
+        activityMock.logo.synth.trigger = jest.fn();
+        activityMock.logo.synth.start = jest.fn();
+        activityMock.logo.dispatchTurtleSignals = jest.fn();
+        activityMock.stage = {
+            update: jest.fn()
+        };
+        singer = turtleMock.singer;
+
+        singer.inNoteBlock = [blk];
+        singer.drumStyle = ["snare drum"];
+        singer.instrumentNames = ["piano"];
+        singer.notePitches[blk] = ["C"];
+        singer.noteOctaves[blk] = [4];
+        singer.noteCents[blk] = [0];
+        singer.noteHertz[blk] = [0];
+        singer.oscList[blk] = [];
+        singer.noteBeat[blk] = 1;
+        singer.noteBeatValues[blk] = 4;
+        singer.noteDrums[blk] = [];
+        singer.embeddedGraphics[blk] = [];
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    const triggeredInstrument = () => activityMock.logo.synth.trigger.mock.calls[0][3];
+
+    it("should play the drum when the note block has no parent", () => {
+        activityMock.blocks.blockList = {
+            [blk]: { name: "newnote", connections: [null, null] }
+        };
+
+        expect(() => Singer.processNote(activityMock, 4, false, blk, 0, jest.fn())).not.toThrow();
+        expect(triggeredInstrument()).toBe("snare drum");
+    });
+
+    it("should play the drum when a parent block is missing from the block list", () => {
+        activityMock.blocks.blockList = {
+            [blk]: { name: "newnote", connections: ["vspace", null] },
+            vspace: { name: "vspace", connections: ["deleted", blk] }
+        };
+
+        expect(() => Singer.processNote(activityMock, 4, false, blk, 0, jest.fn())).not.toThrow();
+        expect(triggeredInstrument()).toBe("snare drum");
+    });
+
+    it("should stop walking up when the parent connections form a cycle", () => {
+        activityMock.blocks.blockList = {
+            [blk]: { name: "newnote", connections: ["a", null] },
+            a: { name: "repeat", connections: ["b", null] },
+            b: { name: "repeat", connections: ["a", null] }
+        };
+
+        expect(() => Singer.processNote(activityMock, 4, false, blk, 0, jest.fn())).not.toThrow();
+        expect(triggeredInstrument()).toBe("snare drum");
+    });
+
+    it("should play the instrument when the note is in a settimbre inside a setdrum", () => {
+        activityMock.blocks.blockList = {
+            [blk]: { name: "newnote", connections: ["timbre", null] },
+            timbre: { name: "settimbre", connections: ["drum", null] },
+            drum: { name: "setdrum", connections: [null, null] }
+        };
+
+        Singer.processNote(activityMock, 4, false, blk, 0, jest.fn());
+
+        expect(triggeredInstrument()).toBe("piano");
+    });
+
+    it("should play the drum when setdrum is reached before any settimbre", () => {
+        activityMock.blocks.blockList = {
+            [blk]: { name: "newnote", connections: ["drum", null] },
+            drum: { name: "setdrum", connections: ["timbre", null] },
+            timbre: { name: "settimbre", connections: [null, null] }
+        };
+
+        Singer.processNote(activityMock, 4, false, blk, 0, jest.fn());
+
+        expect(triggeredInstrument()).toBe("snare drum");
+    });
+});

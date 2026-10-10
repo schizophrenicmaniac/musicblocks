@@ -2441,18 +2441,20 @@ class Singer {
                                     blk in activity.blocks.blockList
                                 ) {
                                     // Start from the note block's parent
-                                    let par = activity.blocks.blockList[blk].connections[0];
-                                    par = activity.blocks.blockList[par];
-                                    // Keep looking for all parents up in order
-                                    while (par.name !== "setdrum") {
+                                    let parId = activity.blocks.blockList[blk].connections[0];
+                                    const visited = new Set();
+                                    // Keep looking for all parents up in order, stopping at the
+                                    // top of the stack, a missing block, or a connection cycle
+                                    while (parId !== null && !visited.has(parId)) {
+                                        visited.add(parId);
+                                        const par = activity.blocks.blockList[parId];
+                                        if (!par || par.name === "setdrum") break;
                                         // If settimbre encountered before setdrum, the said case is true
                                         if (par.name === "settimbre") {
                                             hasSetTimbreInSetDrum = true;
                                             break;
                                         }
-                                        par = par.connections[0];
-                                        if (par === null) break;
-                                        par = activity.blocks.blockList[par];
+                                        parId = par.connections[0];
                                     }
                                 }
 
