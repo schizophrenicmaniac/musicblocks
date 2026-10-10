@@ -216,7 +216,7 @@ class KeyboardController {
         activity.inTempoWidget = this._isWidgetOpen("tempo");
         if (
             (event.altKey && !disableKeys) ||
-            event.keyCode === 13 ||
+            event.keyCode === RETURN ||
             event.key === "/" ||
             event.key === "\\"
         ) {
@@ -240,8 +240,8 @@ class KeyboardController {
                     activity._doFastButton();
                     break;
                 }
-                case 13: {
-                    // Alt+ENTER
+                case RETURN: {
+                    // ENTER (with or without Alt)
                     if (activity.isInputON) return;
 
                     if (activity.searchWidget.style.visibility === "visible") {
@@ -256,8 +256,10 @@ class KeyboardController {
                     // Check if any widget window is open
                     const hasOpenWidget = this._hasOpenWidget();
                     if (activity.turtles.running()) {
+                        event.preventDefault();
                         activity._doHardStopButton();
                     } else if (!hasOpenWidget) {
+                        event.preventDefault();
                         activity.toolbar.highlightStop(platformColor.stopIconcolor);
                         activity._doFastButton();
                     }
@@ -339,11 +341,7 @@ class KeyboardController {
                     break;
             }
         } else {
-            if (pasteEl.style.visibility === "visible" && event.keyCode === RETURN) {
-                if (pasteEl.value.length > 0) {
-                    activity.pasted();
-                }
-            } else if (event.keyCode === SPACE) {
+            if (event.keyCode === SPACE) {
                 // Check if any widget window is open
                 const hasOpenWidget = this._hasOpenWidget();
                 if (activity.turtles.running()) {
@@ -482,19 +480,6 @@ class KeyboardController {
                             activity.searchWidget.style.visibility = "hidden";
                         }
                         break;
-                    case RETURN: {
-                        // Check if any widget window is open
-                        const hasOpenWidget = this._hasOpenWidget();
-                        if (activity.turtles.running()) {
-                            event.preventDefault();
-                            activity._doHardStopButton();
-                        } else if (!disableKeys && !hasOpenWidget) {
-                            event.preventDefault();
-                            activity.toolbar.highlightStop(platformColor.stopIconcolor);
-                            activity._doFastButton();
-                        }
-                        break;
-                    }
                     default:
                         break;
                 }

@@ -146,6 +146,7 @@ const KEYCODE = {
     DOWN: 40,
     LEFT: 37,
     RIGHT: 39,
+    RETURN: 13,
     SPACE: 32,
     HOME: 36,
     END: 35,
@@ -346,6 +347,59 @@ describe("KeyboardController", () => {
             controller.__keyPressed(makeEvent({ keyCode: KEYCODE.SPACE, shiftKey: true }));
 
             expect(activity.turtles.setStageScale).toHaveBeenCalledWith(0.5);
+        });
+    });
+
+    describe("Enter play/stop", () => {
+        it("starts playback and prevents the default action when not running", () => {
+            const activity = makeActivity();
+            activity.turtles.running.mockReturnValue(false);
+            const controller = createController(activity);
+            const event = makeEvent({ keyCode: KEYCODE.RETURN });
+
+            controller.__keyPressed(event);
+
+            expect(event.preventDefault).toHaveBeenCalled();
+            expect(activity.toolbar.highlightStop).toHaveBeenCalledWith("red");
+            expect(activity._doFastButton).toHaveBeenCalled();
+            expect(activity._doHardStopButton).not.toHaveBeenCalled();
+        });
+
+        it("stops playback and prevents the default action when running", () => {
+            const activity = makeActivity();
+            activity.turtles.running.mockReturnValue(true);
+            const controller = createController(activity);
+            const event = makeEvent({ keyCode: KEYCODE.RETURN });
+
+            controller.__keyPressed(event);
+
+            expect(event.preventDefault).toHaveBeenCalled();
+            expect(activity._doHardStopButton).toHaveBeenCalled();
+            expect(activity._doFastButton).not.toHaveBeenCalled();
+        });
+
+        it("does not start playback or prevent the default action while a widget is open", () => {
+            const activity = makeActivity();
+            window.widgetWindows.openWindows = { tempo: {} };
+            const controller = createController(activity);
+            const event = makeEvent({ keyCode: KEYCODE.RETURN });
+
+            controller.__keyPressed(event);
+
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(activity._doFastButton).not.toHaveBeenCalled();
+        });
+
+        it("submits the paste box instead of playing when it is open", () => {
+            const activity = makeActivity();
+            activity.paste.style.visibility = "visible";
+            const controller = createController(activity);
+
+            controller.__keyPressed(makeEvent({ keyCode: KEYCODE.RETURN }));
+
+            expect(activity.pasted).toHaveBeenCalledTimes(1);
+            expect(activity.paste.style.visibility).toBe("hidden");
+            expect(activity._doFastButton).not.toHaveBeenCalled();
         });
     });
 
