@@ -1226,30 +1226,6 @@ describe("processPitch widget-row definition adds one row per visit", () => {
         expect(activityMock.logo.legoWidget.rowLabels).toHaveLength(1);
     });
 
-    test.each([
-        { name: "pitch-drum matrix", flag: "inPitchDrumMatrix", widget: "pitchDrumMatrix" },
-        { name: "phrase maker", flag: "inMatrix", widget: "phraseMaker" },
-        { name: "LEGO widget", flag: "inLegoWidget", widget: "legoWidget" }
-    ])("$name consults the arpeggio once per visit", ({ flag, widget }) => {
-        activityMock.logo[flag] = true;
-        // Real entries are [scalar step, semitones] pairs from CHORDVALUES.
-        turtleMock.singer.arpeggio = [
-            [2, 0],
-            [4, 0],
-            [7, 0]
-        ];
-
-        Singer.processPitch(activityMock, "C", 4, 0, 0, 123);
-
-        // One visit, one note lookup, one row; later entries are unreachable
-        // here because each duplicate is a separate visit. The transposition
-        // value is deliberately not asserted: these branches add the raw pair
-        // instead of decoding it like the note-block path does, a pre-existing
-        // defect that is out of scope for this cleanup.
-        expect(global.getNote).toHaveBeenCalledTimes(1);
-        expect(activityMock.logo[widget].rowLabels).toHaveLength(1);
-    });
-
     test("pitch staircase gets one complete stair per pitch, highest first", () => {
         const PitchStaircaseSteps = require("../widgets/PitchStaircaseSteps");
         activityMock.logo.inPitchStaircase = true;
@@ -1927,6 +1903,118 @@ describe("processPitch in the pitch-drum matrix", () => {
         expect(pdm.rowLabels).toEqual([]);
         expect(pdm.addColBlock).toHaveBeenCalledWith("blk");
         expect(pdm.addRowBlock).not.toHaveBeenCalled();
+    });
+});
+
+describe("processPitch arpeggio in widget rows", () => {
+    const saved = {};
+
+    beforeEach(() => {
+        for (const name of ["getNote", "getSolfege", "noteIsSolfege", "getInterval"]) {
+            saved[name] = global[name];
+            global[name] = musicUtils[name];
+        }
+    });
+
+    afterEach(() => {
+        Object.assign(global, saved);
+    });
+
+    const setup = (flag, arpeggio) => {
+        const turtleMock = createTurtleMock();
+        turtleMock.singer = new Singer(turtleMock);
+        turtleMock.singer.inNoteBlock = [];
+        turtleMock.singer.arpeggio = arpeggio;
+        const activityMock = createActivityMock(turtleMock);
+        activityMock.errorMsg = jest.fn();
+        activityMock.logo.synth = { inTemperament: "equal" };
+        activityMock.logo.pitchBlocks = [];
+        activityMock.logo.pitchDrumMatrix = {
+            rowLabels: [],
+            rowArgs: [],
+            drums: [],
+            addRowBlock: jest.fn(),
+            addColBlock: jest.fn()
+        };
+        activityMock.logo.phraseMaker = { addRowBlock: jest.fn(), rowLabels: [], rowArgs: [] };
+        activityMock.logo.legoWidget = { addRowBlock: jest.fn(), rowLabels: [], rowArgs: [] };
+        activityMock.logo[flag] = true;
+        return activityMock;
+    };
+
+    const widgets = [
+        { name: "pitch-drum matrix", flag: "inPitchDrumMatrix", widget: "pitchDrumMatrix" },
+        { name: "phrase maker", flag: "inMatrix", widget: "phraseMaker" },
+        { name: "LEGO widget", flag: "inLegoWidget", widget: "legoWidget" }
+    ];
+
+    // Entries are [scalar step, semitones] pairs from CHORDVALUES.
+    const chords = [
+        {
+            chord: "triad (root position)",
+            arpeggio: [
+                [0, 0],
+                [2, 0],
+                [4, 0]
+            ]
+        },
+        {
+            chord: "major",
+            arpeggio: [
+                [0, 0],
+                [0, 4],
+                [0, 7]
+            ]
+        }
+    ];
+
+    describe.each(widgets)("$name", ({ flag, widget }) => {
+        test.each(chords)("C4 in a $chord arpeggio gives C4, E4, G4", ({ arpeggio }) => {
+            const activityMock = setup(flag, arpeggio);
+
+            // The arpeggio block re-queues the pitch once per chord tone.
+            for (let i = 0; i < arpeggio.length; i++) {
+                Singer.processPitch(activityMock, "C", 4, 0, 0, "blk");
+            }
+
+            expect(activityMock.logo[widget].rowLabels).toEqual(["C", "E", "G"]);
+            expect(activityMock.logo[widget].rowArgs).toEqual([4, 4, 4]);
+        });
+
+        test("the arpeggio wraps around to the first tone", () => {
+            const activityMock = setup(flag, chords[1].arpeggio);
+
+            for (let i = 0; i < 4; i++) {
+                Singer.processPitch(activityMock, "C", 4, 0, 0, "blk");
+            }
+
+            expect(activityMock.logo[widget].rowLabels).toEqual(["C", "E", "G", "C"]);
+        });
+
+        test("a rest in a custom chord leaves the pitch untransposed", () => {
+            const activityMock = setup(flag, [
+                [0, 4],
+                ["-", "-"]
+            ]);
+
+            Singer.processPitch(activityMock, "C", 4, 0, 0, "blk");
+            Singer.processPitch(activityMock, "C", 4, 0, 0, "blk");
+
+            expect(activityMock.logo[widget].rowLabels).toEqual(["E", "C"]);
+        });
+    });
+
+    test("an arpeggio tone that crosses the octave raises the octave", () => {
+        const activityMock = setup("inMatrix", [
+            [0, 0],
+            [4, 0]
+        ]);
+
+        Singer.processPitch(activityMock, "A", 4, 0, 0, "blk");
+        Singer.processPitch(activityMock, "A", 4, 0, 0, "blk");
+
+        expect(activityMock.logo.phraseMaker.rowLabels).toEqual(["A", "E"]);
+        expect(activityMock.logo.phraseMaker.rowArgs).toEqual([4, 5]);
     });
 });
 

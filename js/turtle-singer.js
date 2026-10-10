@@ -936,6 +936,34 @@ class Singer {
                 ? Singer.calculateInvert(activity.logo, turtle, note, octave)
                 : 0;
 
+        // Widgets see one visit per arpeggio tone, so decode the next
+        // [scalar, semitone] entry the same way the note-block path does.
+        const getArpeggioTransposition = () => {
+            const alen = tur.singer.arpeggio.length;
+            if (alen === 0) {
+                return 0;
+            }
+
+            const entry = tur.singer.arpeggio[tur.singer.arpeggioIndex];
+            tur.singer.arpeggioIndex = (tur.singer.arpeggioIndex + 1) % alen;
+            // A rest in a custom chord has no interval to add.
+            if (isNaN(entry[0])) {
+                return 0;
+            }
+
+            const noteName = getNote(
+                note,
+                octave,
+                0,
+                tur.singer.keySignature,
+                tur.singer.movable,
+                null,
+                activity.errorMsg,
+                activity.logo.synth.inTemperament
+            )[0];
+            return getInterval(entry[0], tur.singer.keySignature, noteName, edo) + entry[1];
+        };
+
         if (tur.singer.justMeasuring.length > 0) {
             const transposition = tur.singer.transposition;
 
@@ -977,10 +1005,7 @@ class Singer {
             // so the row is added once per visit with no extra multiplier.
             // Apply transpositions
             const transposition = 2 * delta + tur.singer.transposition;
-            let atrans = transposition + cents;
-            if (tur.singer.arpeggio.length > 0) {
-                atrans += tur.singer.arpeggio[0];
-            }
+            const atrans = transposition + cents + getArpeggioTransposition();
 
             const nnote = getNote(
                 note,
@@ -1021,10 +1046,7 @@ class Singer {
             // so the row is added once per visit with no extra multiplier.
             // Apply transpositions
             const transposition = 2 * delta + tur.singer.transposition;
-            let atrans = transposition + cents;
-            if (tur.singer.arpeggio.length > 0) {
-                atrans += tur.singer.arpeggio[0];
-            }
+            const atrans = transposition + cents + getArpeggioTransposition();
             const noteObj = getNote(
                 note,
                 octave,
@@ -1086,10 +1108,7 @@ class Singer {
             // so the row is added once per visit with no extra multiplier.
             // Apply transpositions
             const transposition = 2 * delta + tur.singer.transposition;
-            let atrans = transposition + cents;
-            if (tur.singer.arpeggio.length > 0) {
-                atrans += tur.singer.arpeggio[0];
-            }
+            const atrans = transposition + cents + getArpeggioTransposition();
             const noteObj = getNote(
                 note,
                 octave,
